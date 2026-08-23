@@ -118,6 +118,10 @@ class PluginBase(ABC):
         """恢复插件特有数据（用于保存/加载）。子类重写以反序列化自定义数据。"""
         pass
 
+    def get_last_error(self) -> str:
+        """返回最近一次执行失败的错误信息。子类可重写以提供更详细的错误。"""
+        return getattr(self, '_last_error', '')
+
     def get_dialog_class(self):
         """返回插件专用对话框类（用于双击节点打开编辑界面）。
         返回 None 表示没有专用对话框。

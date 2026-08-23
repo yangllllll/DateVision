@@ -3,3 +3,5 @@ __pycache__
 build
 dist
 tmp
+user_plugins/plc.py
+untitled.dvp

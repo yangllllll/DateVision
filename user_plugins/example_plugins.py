@@ -130,7 +130,7 @@ class InvertPlugin(PluginBase):
             return False
 
 
-class number_plugin(PluginBase):
+class NumberPlugin(PluginBase):
     """数学比较插件"""
 
     plugin_id = "user_number"
@@ -173,4 +173,32 @@ class number_plugin(PluginBase):
         except Exception:
             return False
 
-    
+class AndPlugin(PluginBase):
+    """逻辑与插件"""
+    plugin_id = "user_and"
+    plugin_name = "逻辑与"
+    plugin_category = "数学运算"
+    plugin_description = "对两个布尔值进行逻辑与操作"
+
+    @classmethod
+    def input_ports(cls):
+        return [
+            PortDef("input1", PortType.BOOL, "输入布尔值1"),
+            PortDef("input2", PortType.BOOL, "输入布尔值2"),
+        ]
+
+    @classmethod
+    def output_ports(cls):
+        return [PortDef("output", PortType.BOOL, "逻辑与结果")]
+
+    def execute(self) -> bool:
+        input1 = self._inputs.get("input1")
+        input2 = self._inputs.get("input2")
+        if input1 is None or input2 is None:
+            return False
+        try:
+            result = input1 and input2
+            self._outputs["output"] = result
+            return True
+        except Exception:
+            return False

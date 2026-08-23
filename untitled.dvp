@@ -7,20 +7,20 @@
       "x": -896.1185494531248,
       "y": -108.27207601562499,
       "params": {
-        "file_path": "E:/11/42c5e4e2ab724af68ba9eafdecfb21ea.png"
+        "file_path": "E:/11/7af0638b5744f28046852a843d4ec950.png"
       },
       "extra": {}
     },
     {
       "id": "线查找_1",
       "plugin_id": "line_finder",
-      "x": -215.74850870312494,
-      "y": -308.86635664062476,
+      "x": -214.42600870312492,
+      "y": -310.1888566406248,
       "params": {
         "search_direction": "垂直",
         "edge_polarity": "明到暗",
-        "edge_threshold1": 35,
-        "edge_threshold2": 132,
+        "edge_threshold1": 37,
+        "edge_threshold2": 133,
         "hough_threshold": 30,
         "min_line_length": 30,
         "max_line_gap": 15,
@@ -32,10 +32,10 @@
       "extra": {
         "rois": [
           [
-            217,
-            390,
-            156,
-            133
+            363,
+            423,
+            77,
+            87
           ]
         ]
       }
@@ -84,11 +84,11 @@
     {
       "id": "比较_1",
       "plugin_id": "user_number",
-      "x": 323.4649026465028,
-      "y": -63.89260964083181,
+      "x": 238.05620699432893,
+      "y": -100.83391398865788,
       "params": {
         "compare_mode": "小于",
-        "NUM": 50.0
+        "NUM": 400.0
       },
       "extra": {}
     },
@@ -117,11 +117,11 @@
     {
       "id": "模板匹配_5",
       "plugin_id": "pattern_match",
-      "x": -456.4187312499999,
-      "y": -91.33724375,
+      "x": -483.7944812499999,
+      "y": -97.42074375,
       "params": {
         "method": "CCOEFF_NORMED",
-        "threshold": 0.8,
+        "threshold": 0.92,
         "max_matches": 10,
         "draw_color": "绿色",
         "line_thickness": 2
@@ -139,11 +139,11 @@
     {
       "id": "模板匹配_6",
       "plugin_id": "pattern_match",
-      "x": -461.9514062499998,
-      "y": 32.85319999999999,
+      "x": -481.72278124999985,
+      "y": 30.009825,
       "params": {
         "method": "CCOEFF_NORMED",
-        "threshold": 0.8,
+        "threshold": 0.91,
         "max_matches": 10,
         "draw_color": "绿色",
         "line_thickness": 2
@@ -183,8 +183,8 @@
     {
       "id": "图像流推送_1",
       "plugin_id": "websocket_server",
-      "x": 326.12525000000005,
-      "y": -232.81312499999999,
+      "x": 239.43537500000014,
+      "y": -238.89662500000003,
       "params": {
         "port": 9000,
         "quality": 80,
@@ -193,6 +193,32 @@
       "extra": {
         "running": true
       }
+    },
+    {
+      "id": "PLC传值_2",
+      "plugin_id": "plc_send",
+      "x": 598.083375,
+      "y": -99.97812499999999,
+      "params": {
+        "ip": "192.168.124.4"
+      },
+      "extra": {}
+    },
+    {
+      "id": "逻辑与_1",
+      "plugin_id": "user_and",
+      "x": 98.85687499999999,
+      "y": 0.0,
+      "params": {},
+      "extra": {}
+    },
+    {
+      "id": "逻辑与_2",
+      "plugin_id": "user_and",
+      "x": 426.65,
+      "y": -104.65,
+      "params": {},
+      "extra": {}
     }
   ],
   "connections": [
@@ -207,12 +233,6 @@
       "source_port": "line_coords",
       "target_node": "线间距_1",
       "target_port": "lines2"
-    },
-    {
-      "source_node": "线间距_1",
-      "source_port": "horizontal_dist",
-      "target_node": "比较_1",
-      "target_port": "input"
     },
     {
       "source_node": "图像源_1",
@@ -273,11 +293,47 @@
       "source_port": "output",
       "target_node": "图像流推送_1",
       "target_port": "input"
+    },
+    {
+      "source_node": "线间距_1",
+      "source_port": "vertical_dist",
+      "target_node": "比较_1",
+      "target_port": "input"
+    },
+    {
+      "source_node": "比较_2",
+      "source_port": "output",
+      "target_node": "逻辑与_1",
+      "target_port": "input1"
+    },
+    {
+      "source_node": "比较_3",
+      "source_port": "output",
+      "target_node": "逻辑与_1",
+      "target_port": "input2"
+    },
+    {
+      "source_node": "逻辑与_1",
+      "source_port": "output",
+      "target_node": "逻辑与_2",
+      "target_port": "input2"
+    },
+    {
+      "source_node": "比较_1",
+      "source_port": "output",
+      "target_node": "逻辑与_2",
+      "target_port": "input1"
+    },
+    {
+      "source_node": "逻辑与_2",
+      "source_port": "output",
+      "target_node": "PLC传值_2",
+      "target_port": "input"
     }
   ],
   "communication": {
     "port": 2520,
-    "control_word": "TRIGGER",
+    "control_word": "m",
     "output_format": "{比较_1.output}",
     "delimiter": ";",
     "custom_delimiter": ";"
