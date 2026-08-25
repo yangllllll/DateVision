@@ -108,14 +108,7 @@ class DahuaCamera:
         except Exception as e:
             print(f"跳过GigE包大小设置: {e}")
 
-        try:
-            n_ret = self.cam.IMV_SetIntFeatureValue("BufferCount", 10)
-            if IMV_OK == n_ret:
-                print("设置缓冲区数量为10成功")
-            else:
-                print(f"设置缓冲区数量失败: {n_ret}")
-        except Exception as e:
-            print(f"跳过缓冲区数量设置: {e}")
+
 
         try:
             n_ret = self.cam.IMV_SetIntFeatureValue("GevStreamChannelSelector", 0)

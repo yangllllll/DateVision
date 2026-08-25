@@ -28,11 +28,10 @@ class MVCameraDialog(QDialog):
     def __init__(self, plugin: "MVCameraPlugin", input_image, parent=None):
         super().__init__(parent)
         self._plugin = plugin
-        self._camera: DahuaCamera | None = None
-        self._connected = False
+        self._connected = self._plugin.is_connected()
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._update_preview)
-
+        
         self.setWindowTitle("大华相机 - 预览与设置")
         self.resize(800, 600)
         self.setMinimumSize(640, 480)
@@ -54,12 +53,16 @@ class MVCameraDialog(QDialog):
         self._btn_refresh = QPushButton("刷新列表")
         self._btn_refresh.clicked.connect(self._refresh_camera_list)
         cam_layout.addWidget(self._btn_refresh)
-
-        self._btn_connect = QPushButton("连接")
-        self._btn_connect.setStyleSheet("background: #2e7d32; color: #fff;")
-        self._btn_connect.clicked.connect(self._toggle_connection)
-        cam_layout.addWidget(self._btn_connect)
-        main_layout.addWidget(cam_group)
+        if not self._connected:
+            self._btn_connect = QPushButton("连接")
+            self._btn_connect.setStyleSheet("background: #2e7d32; color: #fff;")
+            self._btn_connect.clicked.connect(self._toggle_connection)
+        else:
+            self._btn_connect = QPushButton("断开")
+            self._btn_connect.setStyleSheet("background: #ff4d4f; color: #fff;")
+            self._btn_connect.clicked.connect(self._toggle_connection)
+            cam_layout.addWidget(self._btn_connect)
+            main_layout.addWidget(cam_group)
 
         # ---- 图像预览 ----
         preview_group = QGroupBox("实时预览")
@@ -124,8 +127,8 @@ class MVCameraDialog(QDialog):
             QMessageBox.warning(self, "提示", "请先选择一台相机")
             return
         try:
-            self._camera = DahuaCamera()
-            self._camera.connect(idx)
+            # 使用插件持有的相机实例建立持久连接
+            self._plugin.connect_camera(idx)
             self._connected = True
             self._timer.start(33)  # ~30 fps
             self._btn_connect.setText("断开")
@@ -135,19 +138,12 @@ class MVCameraDialog(QDialog):
             self._status_label.setText("已连接")
         except CameraError as e:
             QMessageBox.critical(self, "连接失败", str(e))
-            self._camera = None
         except Exception as e:
             QMessageBox.critical(self, "错误", f"{type(e).__name__}: {e}")
-            self._camera = None
 
     def _disconnect(self):
         self._timer.stop()
-        if self._camera:
-            try:
-                self._camera.close()
-            except Exception:
-                pass
-            self._camera = None
+        self._plugin.disconnect_camera()
         self._connected = False
         self._preview_label.setText("未连接相机")
         self._preview_label.setPixmap(QPixmap())
@@ -158,10 +154,10 @@ class MVCameraDialog(QDialog):
         self._status_label.setText("已断开")
 
     def _update_preview(self):
-        if not self._connected or self._camera is None:
+        if not self._connected:
             return
         try:
-            frame = self._camera.get_frame(timeout=100)
+            frame = self._plugin.get_frameimg(timeout=100)
             if frame is None:
                 return
             # 转为 RGB 供 Qt 显示
@@ -180,10 +176,22 @@ class MVCameraDialog(QDialog):
                 Qt.TransformationMode.SmoothTransformation,
             )
             self._preview_label.setPixmap(scaled)
-        except CameraError:
-            self._status_label.setText("取帧超时")
+        except CameraError as e:
+            # 连接意外断开，自动停止预览
+            self._status_label.setText(f"取帧失败: {e}，连接已断开")
+            self._on_connection_lost()
         except Exception as e:
             self._status_label.setText(f"预览异常: {e}")
+
+    def _on_connection_lost(self):
+        """连接意外断开时恢复 UI 状态"""
+        self._timer.stop()
+        self._connected = False
+        self._preview_label.setText("连接已断开")
+        self._btn_connect.setText("连接")
+        self._btn_connect.setStyleSheet("background: #2e7d32; color: #fff;")
+        self._cam_combo.setEnabled(True)
+        self._btn_refresh.setEnabled(True)
 
     def _on_accept(self):
         """保存设置并关闭"""
@@ -211,8 +219,8 @@ class MVCameraPlugin(PluginBase):
 
     def __init__(self):
         super().__init__()
-        self._camera: DahuaCamera | None = None
-        self._connected = False
+        self._camera = DahuaCamera()
+        self._last_error = ""
 
     @classmethod
     def input_ports(cls):
@@ -234,28 +242,48 @@ class MVCameraPlugin(PluginBase):
     def get_dialog_class(self):
         return MVCameraDialog
 
+    def connect_camera(self, index: int | None = None):
+        """建立持久连接（仅需连接一次，之后保持）"""
+        if index is not None:
+            self.set_param("camera_index", index)
+        self._camera.connect(self.get_param("camera_index"))
+
+    def disconnect_camera(self):
+        """主动断开连接（仅通过对话框操作）"""
+        self._camera.close()
+
+    def is_connected(self) -> bool:
+        return self._camera._is_connected
+
+    def get_frameimg(self, timeout: int | None = None):
+        """拉取一帧。timeout 为 None 时使用插件参数"""
+        if timeout is None:
+            timeout = self.get_param("timeout")
+        return self._camera.get_frame(2000)
+
     def execute(self) -> bool:
         try:
-            # 每次执行时重新连接取一帧
-            cam = DahuaCamera()
-            idx = self.get_param("camera_index")
-            timeout = self.get_param("timeout")
-            cam.connect(idx)
-            try:
-                frame = cam.get_frame(timeout=timeout)
-                if frame is None:
-                    self._last_error = "获取图像失败"
-                    return False
-                self._outputs["output"] = frame
-                return True
-            finally:
-                cam.close()
+            # 未连接则自动重连（首次运行或意外断联后）
+            if not self._camera._is_connected:
+                self.connect_camera()
+
+            frame = self._camera.get_frame(timeout=self.get_param("timeout"))
+            if frame is None:
+                self._last_error = "获取图像失败"
+                return False
+            self._outputs["output"] = frame
+            return True
         except CameraError as e:
             self._last_error = f"相机错误: {e}"
+            # 连接意外断开，关闭以允许下次自动重连
+            try:
+                self._camera.close()
+            except Exception:
+                pass
             return False
         except Exception as e:
             self._last_error = f"{type(e).__name__}: {e}\n{traceback.format_exc()}"
             return False
 
     def get_last_error(self) -> str:
-        return getattr(self, '_last_error', '')
+        return self._last_error
