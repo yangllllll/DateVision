@@ -20,7 +20,7 @@ class WebSocketServerPlugin(PluginBase):
 
     plugin_id = "websocket_server"
     plugin_name = "图像流推送"
-    plugin_category = "图像透传"
+    plugin_category = "输入输出"
     plugin_description = "启动 WebSocket 服务器，将图像流以 base64 发送到所有订阅客户端"
 
     WS_MAGIC = b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
