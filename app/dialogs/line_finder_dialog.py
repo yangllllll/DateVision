@@ -6,20 +6,19 @@ from typing import Optional
 
 from PySide6.QtCore import Qt, QRectF, QPointF, Signal
 from PySide6.QtGui import (
-    QPainter, QColor, QPen, QBrush, QFont, QImage, QPixmap,
-    QPainterPath, QKeyEvent, QAction,
+    QPainter, QColor, QPen, QBrush, QFont, QImage, QPixmap, QKeyEvent,
 )
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QWidget, QLabel,
-    QPushButton, QSplitter, QGroupBox, QFormLayout,
-    QSpinBox, QDoubleSpinBox, QComboBox, QSlider, QCheckBox,
+    QPushButton, QGroupBox, QFormLayout,
+    QSpinBox, QComboBox, QSlider, QCheckBox,
     QTableWidget, QTableWidgetItem, QHeaderView, QListWidget,
-    QListWidgetItem, QMessageBox, QScrollArea, QTextEdit,
+    QListWidgetItem, QMessageBox,
     QGraphicsView, QGraphicsScene, QGraphicsRectItem,
     QGraphicsItem, QGraphicsSceneMouseEvent, QStyleOptionGraphicsItem,
 )
 
-from app.plugin_system.base import PluginBase
+
 from plugins.line_finder import LineFinderPlugin
 
 

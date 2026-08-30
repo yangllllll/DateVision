@@ -1,19 +1,16 @@
 """模板匹配专用对话框 - ROI框选训练模板 + 参数设置 + 检测"""
 
-import cv2
-import numpy as np
 
-from PySide6.QtCore import Qt, QRectF, QPointF
+from PySide6.QtCore import Qt
 from PySide6.QtGui import (
-    QPainter, QColor, QPen, QBrush, QFont, QImage, QPixmap,
+    QPainter, QImage, QPixmap,
     QKeyEvent,
 )
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QWidget, QLabel,
     QPushButton, QGroupBox, QFormLayout, QComboBox, QSlider,
     QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox,
-    QGraphicsView, QGraphicsScene, QGraphicsRectItem,
-    QGraphicsItem, QGraphicsSceneMouseEvent, QStyleOptionGraphicsItem,
+    QGraphicsView
 )
 
 from app.dialogs.line_finder_dialog import ROIImageScene, ROIRectItem
