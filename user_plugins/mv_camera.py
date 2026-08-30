@@ -316,7 +316,11 @@ class PCCameraPlugin(PluginBase):
 
     def get_dialog_class(self):
         return PCCameraDialog
+    
     def is_connected(self) -> bool:
+        """查询当前是否已成功连接相机。"""
+        if self.cap is None:
+            return False
         return self.cap.isOpened()
 
     def connect_camera(self, index: int | None = None):
@@ -332,6 +336,7 @@ class PCCameraPlugin(PluginBase):
             self.cap = None
             raise RuntimeError(f"无法打开相机 {index}")
 
+
     def disconnect_camera(self):
         """主动断开连接"""
         if self.cap is not None:
@@ -339,23 +344,24 @@ class PCCameraPlugin(PluginBase):
             self.cap = None
 
     def get_frameimg(self, timeout: int | None = None):
-        """拉取一帧，返回 numpy 数组或 None"""
+        """拉取最新一帧，返回 numpy 数组或 None"""
         if self.cap is None:
             return None
-        ret, frame = self.cap.read()
+        ret, frame = self.cap.retrieve()
         if not ret:
             return None
         return frame
 
     def execute(self) -> bool:
         try:
-            self.connect_camera()
+            # 未连接则自动重连（首次运行或意外断联后）
+            if not self.is_connected():
+                self.connect_camera()
             frame = self.get_frameimg()
             if frame is None:
                 self._last_error = "获取图像失败"
                 return False
             self._outputs["output"] = frame
-            self.disconnect_camera()
             return True
         except Exception as e:
             self._last_error = f"{type(e).__name__}: {e}"

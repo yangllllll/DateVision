@@ -5,7 +5,7 @@ import os
 import re
 import numpy as np
 
-from PySide6.QtCore import Qt, QPointF
+from PySide6.QtCore import Qt, QPointF, QTimer
 from PySide6.QtGui import QAction, QKeySequence, QFont
 from PySide6.QtWidgets import (
     QMainWindow, QToolBar, QStatusBar,
@@ -49,8 +49,13 @@ class MainWindow(QMainWindow):
         """)
 
         self._engine = ExecutionEngine()
-        self._last_image: dict[str, any] = {}
+        self._last_image: dict[str, np.ndarray] = {}
         self._current_file: str | None = None
+
+        # 连续运行定时器
+        self._continuous_timer = QTimer(self)
+        self._continuous_timer.timeout.connect(self._do_execute)
+        self._continuous_mode = False
 
         self._setup_actions()
         self._setup_menu()
@@ -79,6 +84,11 @@ class MainWindow(QMainWindow):
         self._act_run = QAction("运行(&R)", self)
         self._act_run.setShortcut(QKeySequence("F5"))
         self._act_run.triggered.connect(self._on_run)
+
+        self._act_continuous = QAction("连续运行", self)
+        self._act_continuous.setCheckable(True)
+        self._act_continuous.setShortcut(QKeySequence("F6"))
+        self._act_continuous.triggered.connect(self._on_toggle_continuous)
 
         self._act_stop = QAction("停止", self)
         self._act_stop.setShortcut(QKeySequence("Shift+F5"))
@@ -126,6 +136,7 @@ class MainWindow(QMainWindow):
 
         run_menu = menu_bar.addMenu("运行(&R)")
         run_menu.addAction(self._act_run)
+        run_menu.addAction(self._act_continuous)
         run_menu.addAction(self._act_stop)
 
         tools_menu = menu_bar.addMenu("工具(&T)")
@@ -139,7 +150,7 @@ class MainWindow(QMainWindow):
         toolbar.setMovable(False)
         toolbar.setIconSize(toolbar.iconSize())
 
-        for act in [self._act_new, self._act_open, self._act_save, None, self._act_run, self._act_stop, None, self._act_delete]:
+        for act in [self._act_new, self._act_open, self._act_save, None, self._act_run, self._act_continuous, self._act_stop, None, self._act_delete]:
             if act is None:
                 toolbar.addSeparator()
             else:
@@ -290,8 +301,27 @@ class MainWindow(QMainWindow):
         self._act_run.setEnabled(True)
         self._statusbar.showMessage("执行完成")
 
+    def _on_toggle_continuous(self, checked: bool):
+        """切换连续运行模式"""
+        self._continuous_mode = checked
+        if checked:
+            # 停止单次触发相关状态，启动连续运行
+            self._continuous_timer.start(100)  # 每 100ms 执行一次
+            self._act_run.setEnabled(False)
+            self._output.log_info("已开启连续运行模式（每 100ms 执行一次）")
+            self._statusbar.showMessage("连续运行中...")
+        else:
+            self._continuous_timer.stop()
+            self._act_run.setEnabled(True)
+            self._output.log_info("已关闭连续运行模式")
+            self._statusbar.showMessage("已切换为单次触发")
+
     def _on_stop(self):
         self._engine._running = False
+        # 连续模式下停止定时器
+        if self._continuous_mode:
+            self._act_continuous.setChecked(False)
+            self._on_toggle_continuous(False)
         self._output.log_warning("执行已停止")
         self._act_run.setEnabled(True)
 
