@@ -78,6 +78,9 @@ class OutputPanel(QWidget):
         layout.addWidget(self._tabs)
 
     def log(self, message: str, color: str = "#cccccc"):
+        # 日志超过 50 条时自动清屏
+        if self._log.document().blockCount() > 50:
+            self._log.clear()
         self._log.moveCursor(QTextCursor.MoveOperation.End)
         self._log.setTextColor(QColor(color))
         self._log.insertPlainText(message + "\n")

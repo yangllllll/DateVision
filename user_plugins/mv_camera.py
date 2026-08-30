@@ -258,10 +258,13 @@ class MVCameraPlugin(PluginBase):
     def execute(self) -> bool:
         try:
             # 未连接则自动重连（首次运行或意外断联后）
-            if not self._camera._is_connected:
-                self.connect_camera()
+            for _ in range(3):
+                if not self.is_connected():
+                    self.connect_camera()
+                else:
+                    break
 
-            frame = self._camera.get_frame(timeout=self.get_param("timeout"))
+            frame = self.get_frameimg(timeout=self.get_param("timeout"))
             if frame is None:
                 self._last_error = "获取图像失败"
                 return False
@@ -349,8 +352,12 @@ class PCCameraPlugin(PluginBase):
     def execute(self) -> bool:
         try:
             # 未连接则自动重连（首次运行或意外断联后）
-            if not self.is_connected():
-                self.connect_camera(self.get_param("camera_index"))
+            for _ in range(3):
+                if not self.is_connected():
+                    self.disconnect_camera()
+                    self.connect_camera(self.get_param("camera_index"))
+                else:
+                    break
             frame = self.get_frameimg()
             if frame is None:
                 self._last_error = "获取图像失败"
