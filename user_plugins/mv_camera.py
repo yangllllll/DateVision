@@ -19,7 +19,7 @@ from app.plugin_system.base import PluginBase, PortDef, PortType, ParamDef
 # 添加 SDK 路径
 mv_sdk_path = os.path.join(os.path.dirname(__file__), 'MVSDK')
 sys.path.insert(0, mv_sdk_path)
-from IMV_service import DahuaCamera, CameraError
+from IMV_service import DahuaCamera, CameraError # type: ignore
 
 
 class MVCameraDialog(QDialog):
@@ -323,12 +323,10 @@ class PCCameraPlugin(PluginBase):
             return False
         return self.cap.isOpened()
 
-    def connect_camera(self, index: int | None = None):
+    def connect_camera(self, index: int):
         """建立持久连接"""
         if index is None:
-            index = self.get_param("camera_index")
-        else:
-            self.set_param("camera_index", index)
+            return RuntimeError("相机序号不能为空")
         if self.cap is not None:
             self.cap.release()
         self.cap = cv2.VideoCapture(index, cv2.CAP_DSHOW)
@@ -356,7 +354,7 @@ class PCCameraPlugin(PluginBase):
         try:
             # 未连接则自动重连（首次运行或意外断联后）
             if not self.is_connected():
-                self.connect_camera()
+                self.connect_camera(self.get_param("camera_index"))
             frame = self.get_frameimg()
             if frame is None:
                 self._last_error = "获取图像失败"
@@ -494,7 +492,8 @@ class PCCameraDialog(QDialog):
             self._preview_label.setPixmap(scaled)
         except Exception:
             self._status_label.setText("取帧失败，连接已断开")
-            self._on_connection_lost()
+            self._plugin.disconnect_camera()
+            return
 
 
     def _on_accept(self):
