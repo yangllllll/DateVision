@@ -28,10 +28,8 @@ class MVCameraDialog(QDialog):
     def __init__(self, plugin: "MVCameraPlugin", input_image, parent=None):
         super().__init__(parent)
         self._plugin = plugin
-        self._connected = self._plugin.is_connected()
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._update_preview)
-        
         self.setWindowTitle("大华相机 - 预览与设置")
         self.resize(800, 600)
         self.setMinimumSize(640, 480)
@@ -49,11 +47,10 @@ class MVCameraDialog(QDialog):
         self._cam_combo.setMinimumWidth(300)
         cam_layout.addWidget(QLabel("可用相机:"))
         cam_layout.addWidget(self._cam_combo, 1)
-
         self._btn_refresh = QPushButton("刷新列表")
         self._btn_refresh.clicked.connect(self._refresh_camera_list)
         cam_layout.addWidget(self._btn_refresh)
-        if not self._connected:
+        if not self._plugin.is_connected():
             self._btn_connect = QPushButton("连接")
             self._btn_connect.setStyleSheet("background: #2e7d32; color: #fff;")
             self._btn_connect.clicked.connect(self._toggle_connection)
@@ -116,7 +113,7 @@ class MVCameraDialog(QDialog):
             self._status_label.setText(f"错误: {e}")
 
     def _toggle_connection(self):
-        if self._connected:
+        if self._plugin.is_connected():
             self._disconnect()
         else:
             self._connect()
@@ -152,7 +149,7 @@ class MVCameraDialog(QDialog):
         self._status_label.setText("已断开")
 
     def _update_preview(self):
-        if not self._connected:
+        if not self._plugin.is_connected():
             return
         try:
             frame = self._plugin.get_frameimg(timeout=100)
@@ -184,7 +181,6 @@ class MVCameraDialog(QDialog):
     def _on_connection_lost(self):
         """连接意外断开时恢复 UI 状态"""
         self._timer.stop()
-        self._connected = self._plugin.is_connected()
         self._preview_label.setText("连接已断开")
         self._btn_connect.setText("连接")
         self._btn_connect.setStyleSheet("background: #2e7d32; color: #fff;")
@@ -199,11 +195,11 @@ class MVCameraDialog(QDialog):
         self.accept()
 
     def reject(self):
-        self._disconnect()
+        self._on_accept()
         super().reject()
 
     def closeEvent(self, event):
-        self._disconnect()
+        self._plugin.disconnect_camera()
         super().closeEvent(event)
 
 
