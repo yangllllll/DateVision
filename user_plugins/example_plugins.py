@@ -194,7 +194,11 @@ class AndPlugin(PluginBase):
     def execute(self) -> bool:
         input1 = self._inputs.get("input1")
         input2 = self._inputs.get("input2")
+        if input1 == False or input2 == False:
+            self._outputs["output"] = False
+            return False
         if input1 is None or input2 is None:
+            self._outputs["output"] = False
             return False
         try:
             result = input1 and input2

@@ -28,9 +28,12 @@ class WebSocketServerPlugin(PluginBase):
     def __init__(self):
         super().__init__()
         self._server_thread: Optional[threading.Thread] = None
+        self._broadcast_thread: Optional[threading.Thread] = None
         self._server_socket: Optional[socket.socket] = None
         self._clients: list[socket.socket] = []
         self._clients_lock = threading.Lock()
+        self._frame_lock = threading.Lock()
+        self._current_frame: Optional[np.ndarray] = None
         self._running = False
         self._last_error = ""
 
@@ -51,38 +54,31 @@ class WebSocketServerPlugin(PluginBase):
             ParamDef("port", "监听端口", "int", 9000, 1024, 65535, 1, description="WebSocket 服务端口"),
             ParamDef("quality", "JPEG质量", "int", 80, 10, 100, 5, description="base64 编码图片的 JPEG 质量"),
             ParamDef("auto_start", "自动启动", "bool", True, description="加载项目时自动启动服务"),
+            ParamDef("fps", "发送帧率", "int", 30, 1, 60, 1, description="每秒发送的图像帧数"),
         ]
 
     def execute(self) -> bool:
-        # 确保服务器已启动（即使没有图像也要启动）
-        if not self._running:
-            self._start_server()
-
+        """更新输入图像和客户端状态，实际的发送由后台线程持续进行"""
         img = self._inputs.get("input")
+        
+        # 更新当前图像（用于后台线程发送）
+        with self._frame_lock:
+            self._current_frame = img.copy() if img is not None else None
+        
+        # 更新客户端数量输出
         self._outputs["client_count"] = len(self._clients)
+        
+        # 透传图像
+        self._outputs["output"] = img
+        
+        # 确保服务器已启动
+        if not self._running and self.get_param("auto_start"):
+            self._start_server()
+        
+        return True
 
-        if img is None:
-            # 没有图像但服务器可能已启动，不算失败
-            self._outputs["output"] = None
-            return True
-
-        try:
-            # 透传图像
-            self._outputs["output"] = img
-
-            # 编码为 base64 并广播
-            b64 = self._encode_image(img)
-            if b64:
-                self._broadcast(b64)
-
-            return True
-        except Exception as e:
-            self._last_error = f"{type(e).__name__}: {e}\n{traceback.format_exc()}"
-            return False
-
-    def _encode_image(self, img: np.ndarray) -> str:
+    def _encode_image(self, img: np.ndarray, quality: int) -> str:
         """将图像编码为 base64 字符串"""
-        quality = self.get_param("quality")
         if len(img.shape) == 2:
             encode_img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
         else:
@@ -130,6 +126,8 @@ class WebSocketServerPlugin(PluginBase):
         self._running = True
         self._server_thread = threading.Thread(target=self._server_loop, daemon=True)
         self._server_thread.start()
+        self._broadcast_thread = threading.Thread(target=self._broadcast_loop, daemon=True)
+        self._broadcast_thread.start()
         # 等待服务器实际绑定端口（最多等2秒）
         for _ in range(20):
             if self._server_socket is not None or not self._running:
@@ -155,6 +153,11 @@ class WebSocketServerPlugin(PluginBase):
                 except Exception:
                     pass
             self._clients.clear()
+        # 等待线程结束
+        if self._broadcast_thread and self._broadcast_thread.is_alive():
+            self._broadcast_thread.join(timeout=2.0)
+        if self._server_thread and self._server_thread.is_alive():
+            self._server_thread.join(timeout=2.0)
 
     def _server_loop(self):
         """服务器主循环"""
@@ -186,6 +189,30 @@ class WebSocketServerPlugin(PluginBase):
                 continue
             except OSError:
                 break
+
+    def _broadcast_loop(self):
+        """后台广播循环，持续向客户端发送图像"""
+        while self._running:
+            try:
+                # 获取当前图像和参数
+                with self._frame_lock:
+                    img = self._current_frame
+                
+                quality = self.get_param("quality")
+                fps = self.get_param("fps")
+                
+                if img is not None and len(self._clients) > 0:
+                    # 编码并广播
+                    b64 = self._encode_image(img, quality)
+                    if b64:
+                        self._broadcast(b64)
+                
+                # 控制帧率
+                time.sleep(1.0 / fps)
+                
+            except Exception as e:
+                self._last_error = f"广播循环错误: {e}"
+                time.sleep(0.1)
 
     def _handshake(self, sock: socket.socket):
         """WebSocket 握手"""

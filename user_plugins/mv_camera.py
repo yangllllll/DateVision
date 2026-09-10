@@ -265,6 +265,7 @@ class MVCameraPlugin(PluginBase):
                     break
 
             frame = self.get_frameimg(timeout=self.get_param("timeout"))
+            
             if frame is None:
                 self._last_error = "获取图像失败"
                 return False
@@ -351,18 +352,13 @@ class PCCameraPlugin(PluginBase):
 
     def execute(self) -> bool:
         try:
-            # 未连接则自动重连（首次运行或意外断联后）
-            for _ in range(3):
-                if not self.is_connected():
-                    self.disconnect_camera()
-                    self.connect_camera(self.get_param("camera_index"))
-                else:
-                    break
+            self.connect_camera(self.get_param("camera_index"))
             frame = self.get_frameimg()
             if frame is None:
                 self._last_error = "获取图像失败"
                 return False
             self._outputs["output"] = frame
+            self.disconnect_camera()
             return True
         except Exception as e:
             self._last_error = f"{type(e).__name__}: {e}"
@@ -469,6 +465,7 @@ class PCCameraDialog(QDialog):
             return
         self._plugin.connect_camera(idx)
         self._update_preview()
+        self._plugin.disconnect_camera()
         
 
     def _update_preview(self):

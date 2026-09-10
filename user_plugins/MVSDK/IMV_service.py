@@ -107,9 +107,6 @@ class DahuaCamera:
                 print(f"设置GigE包大小失败: {n_ret}")
         except Exception as e:
             print(f"跳过GigE包大小设置: {e}")
-
-
-
         try:
             n_ret = self.cam.IMV_SetIntFeatureValue("GevStreamChannelSelector", 0)
             if IMV_OK == n_ret:
@@ -129,7 +126,7 @@ class DahuaCamera:
     def get_frame(self, timeout=1000):
         if not self._is_connected or self.cam is None:
             raise CameraError("Camera not connected! Call connect() first.")
-
+        self.cam.IMV_ClearFrameBuffer()
         frame = IMV_Frame()  # type: ignore
         cv_image = None
 
