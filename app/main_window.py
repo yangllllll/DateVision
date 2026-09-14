@@ -402,7 +402,7 @@ class MainWindow(QMainWindow):
 
     def _on_about(self):
         QMessageBox.about(self, "关于 DateVision",
-                          "<h3>DateVision 工业视觉检测平台 v1.20.0.2</h3>"
+                          "<h3>DateVision 工业视觉检测平台 v1.20.0.3</h3>"
                           "<p>基于 PySide6 + OpenCV 构建</p>"
                           "<p>开源免费，无授权限制</p>"
                           "<hr>"
