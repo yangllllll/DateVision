@@ -86,7 +86,9 @@ class DahuaCamera:
         n_ret = self.cam.IMV_Open()
         if IMV_OK != n_ret:  # type: ignore
             raise CameraError(f"Open devHandle failed! ErrorCode {n_ret}")
-
+        n_ret = self.cam.IMV_SetBufferCount(1)
+        if IMV_OK != n_ret:  # type: ignore
+            raise CameraError(f"Set buffer count failed! ErrorCode[{n_ret}]")
         n_ret = self.cam.IMV_SetEnumFeatureSymbol("TriggerSource", "Software")
         if IMV_OK != n_ret:  # type: ignore
             raise CameraError(f"Set triggerSource value failed! ErrorCode[{n_ret}]")

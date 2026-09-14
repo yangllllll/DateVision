@@ -135,6 +135,10 @@ class TcpServerThread(QThread):
                     idx = buffer.find(cw_bytes)
                     buffer = buffer[idx + len(cw_bytes):]  # 移除控制字
                     self.log_msg.emit(f"收到控制字 '{self._control_word}'，触发检测", "#ce93d8")
+                    # 清除可能残留的上一次响应，确保本次等待对应本次触发，避免时序错乱
+                    with self._response_lock:
+                        self._response_data = ""
+                    self._response_ready.clear()
                     self.trigger_received.emit()
 
                     # 等待响应数据（最多等10秒）

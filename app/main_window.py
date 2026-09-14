@@ -418,16 +418,17 @@ class MainWindow(QMainWindow):
     def _on_comm_trigger(self):
         """通信面板触发检测"""
         self._output.log_info("TCP通信触发检测...")
-        self._do_execute()
+        self._do_execute(send_response=True)
 
-    def _do_execute(self):
+    def _do_execute(self, send_response: bool = False):
         """执行流程图并生成通信响应"""
         nodes = self._scene.get_nodes()
         connections = self._scene.get_connections()
 
         if not nodes:
             self._output.log_warning("流程图为空，无法执行")
-            self._communication.set_response_data("ERROR:NO_NODES")
+            if send_response:
+                self._communication.set_response_data("ERROR:NO_NODES")
             return
 
         self._engine.setup(nodes, connections)
@@ -455,8 +456,9 @@ class MainWindow(QMainWindow):
         else:
             response = status_str
 
-        self._communication.set_response_data(response)
         self._output.log_info(f"通信响应: {response[:200]}{'...' if len(response) > 200 else ''}")
+        if send_response:
+            self._communication.set_response_data(response)
 
         if "_error" in results:
             self._output.log_error(results["_error"])
